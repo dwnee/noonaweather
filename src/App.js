@@ -1,40 +1,95 @@
-import "./App.css";
+import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { useEffect, useState } from "react";
-import WeatherBox from "./components/WeatherBox";
+import "./App.css";
+import { Container } from "react-bootstrap";
 import WeatherButton from "./components/WeatherButton";
+import WeatherBox from "./components/WeatherBox";
+import { ClipLoader } from "react-spinners";
 
-function App() {
-  const [weather,setWeather]=useState(null)
+const cities = ["hanoi", "paris", "new york", "seoul"];
+const API_KEY = process.env.REACT_APP_OPENWEATHER_API_KEY;
+
+const App = () => {
+  const [loading, setLoading] = useState(false);
+  const [city, setCity] = useState(null);
+  const [weather, setWeather] = useState(null);
+  const [apiError, setAPIError] = useState("");
+
+  const getWeatherByCurrentLocation = async (lat, lon) => {
+    try {
+      let url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      setWeather(data);
+      setLoading(false);
+    } catch (err) {
+      setAPIError(err.message);
+      setLoading(false);
+    }
+  };
+
   const getCurrentLocation = () => {
     navigator.geolocation.getCurrentPosition((position) => {
-      let lat = position.coords.latitude;
-      let lon = position.coords.longitude;
-      getWeatherByCurrentLocation(lat, lon);
-      console.log("현재 위치", lat, lon);
-    }, error);
+      const { latitude, longitude } = position.coords;
+      getWeatherByCurrentLocation(latitude, longitude);
+    });
   };
-  const getWeatherByCurrentLocation = async (lat, lon) => {
-    let url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=15a4a216e9d3e5f26b8553624b7c191f&units=metric`;
-    let response = await fetch(url);
-    let data = await response.json();
-    setWeather(data)
+
+  const getWeatherByCity = async () => {
+    try {
+      let url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      setWeather(data);
+      setLoading(false);
+    } catch (err) {
+      console.log(err);
+      setAPIError(err.message);
+      setLoading(false);
+    }
   };
-  function error() {
-    alert("Sorry, no position available.");
-  }
+
   useEffect(() => {
-    getCurrentLocation();
-  }, []);
+     if (city == null) {
+       setLoading(true);
+       getCurrentLocation();
+     } else {
+    setLoading(true);
+    getWeatherByCity();
+     }
+  }, [city]);
+
+  const handleCityChange = (city) => {
+    if (city === "current") {
+      setCity(null);
+    } else {
+      setCity(city);
+    }
+  };
 
   return (
-    <div>
-      <div className="container">
-        <WeatherBox weather={weather}/>
-        <WeatherButton />
-      </div>
-    </div>
+    <>
+      <Container className="vh-100">
+        {loading ? (
+          <div className="w-100 vh-100 d-flex justify-content-center align-items-center">
+            <ClipLoader color="#f86c6b" size={150} loading={loading} />
+          </div>
+        ) : !apiError ? (
+          <div class="main-container">
+            <WeatherBox weather={weather} />
+            <WeatherButton
+              cities={cities}
+              handleCityChange={handleCityChange}
+              selectedCity={city}
+            />
+          </div>
+        ) : (
+          apiError
+        )}
+      </Container>
+    </>
   );
-}
-
+};
 export default App;
